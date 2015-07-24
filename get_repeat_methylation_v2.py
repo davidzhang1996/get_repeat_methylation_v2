@@ -2,10 +2,12 @@ import sys
 import subprocess
 import time 
 import os.path
+#from __future__ import print_function
+
 start_time=time.time()
 
 def main(): 
-	print ("Sorting Sam2Bed file: %s seconds") %(time.time()-start_time)
+	#print ("Sorting Sam2Bed file: %s seconds") %(time.time()-start_time)
 
 	#f=open("adrenal_gland_intersect.bed", "w")
 	#subprocess.call (["sort", "-k1,1", "-k2,2n", "adrenal_gland.bed"], stdout=f)
@@ -34,21 +36,33 @@ def main():
 	#for item in repeat_consensus_c:
 	#	print item 
 	#	print repeat_consensus_c[item]
-	#print ("Writing output to Wig file: %s seconds") %(time.time()-start_time)
-	#format_output(repeat_consensus_c)
+	print ("Writing output to Wig file: %s seconds") %(time.time()-start_time)
+	format_output(repeat_consensus_c)
 
 def testing(repeat_consensus_c_dict): 
 	repeat_consensus_c=repeat_consensus_c_dict
 	subfamily=repeat_consensus_c.keys()[0]
 
+	print "Consensus Sequence Forward Positions: ", repeat_consensus_c[subfamily][0][0]
+	print "Consensus Sequence Methyl Positions: ", repeat_consensus_c[subfamily][0][1]
+	print "Consensus Sequence Total Positions: ", repeat_consensus_c[subfamily][0][2]
+	print 
+	print 
+	print "Consensus Sequence Reverse Positions: ", repeat_consensus_c[subfamily][1][0]
+	print "Consensus Sequence Methyl Positions: ", repeat_consensus_c[subfamily][1][1]
+	print "Consensus Sequence Total Positions: ", repeat_consensus_c[subfamily][1][2]
 	list_position=repeat_consensus_c[subfamily][0][0].index(393)
+	length_positions_forward=len(repeat_consensus_c[subfamily][0][0])
+	length_methyl_forward=len(repeat_consensus_c[subfamily][0][1])
+	#print length_positions_forward
+	#print length_methyl_forward
 	#print "Rmsk consensus forward list position: ", list_position
-	#print "Corresbonding Methyl: ", repeat_consensus_c[subfamily][0][0]
+	#print "Corresbonding Methyl: ", repeat_consensus_c[subfamily][0][1][list_position]
 
 
 def get_copy_cpg_ref(): 
 	cpg_ref_dict={}
-	with open ("rmsk_c_ref_L1MC5a_3end-1.bed", "r") as rmsk_cpg_ref: 
+	with open ("rmsk_c_ref_chrm22.bed", "r") as rmsk_cpg_ref: 
 		name, forward_list, reverse_list= "" , [], []
 
 		for line in rmsk_cpg_ref:
@@ -60,7 +74,7 @@ def get_copy_cpg_ref():
 
 def get_copy_cpg_cons(): 
 	cpg_cons_dict={}
-	with open ("rmsk_c_cons_L1MC5a_3end-1.bed", "r") as rmsk_cpg_cons: 
+	with open ("rmsk_c_cons_chrm22.bed", "r") as rmsk_cpg_cons: 
 		name, forward_list, reverse_list= "", [], []
 
 		for line in rmsk_cpg_cons: 
@@ -84,7 +98,7 @@ def get_copy_cpg_cons():
 
 def get_consensus_c(): 
 	cons_c_dict={}
-	with open ("rmsk_c_consensus_L1MC5a_3end.bed", "r") as rmsk_cpg_ref: 
+	with open ("rmsk_c_consensus.bed", "r") as rmsk_cpg_ref: 
 		name, forward_list, reverse_list, forward_methyl, reverse_methyl, forward_total, reverse_total= "" , [], [], [], [] ,[] ,[]
 
 		for line in rmsk_cpg_ref:
@@ -92,44 +106,61 @@ def get_consensus_c():
 			cons_c_dict, name, forward_list, reverse_list = get_cpg(line_list, cons_c_dict, name, forward_list, reverse_list)
 		
 
-		for number in xrange(len(forward_list)):
-			forward_methyl.append(0)
-			forward_total.append(0)
+		for item in cons_c_dict:
+			forward_list=cons_c_dict[item][0]
+			reverse_list=cons_c_dict[item][1]
+			for number in xrange(len(cons_c_dict[item][0])):
+				forward_methyl.append(0)
+				forward_total.append(0)
 
-		for number in xrange(len(reverse_list)): 
-			reverse_methyl.append(0)
-			reverse_total.append(0)
+			for number in xrange(len(cons_c_dict[item][1])): 
+				reverse_methyl.append(0)
+				reverse_total.append(0)
 
-		cons_c_dict[name]= [[forward_list, forward_methyl, forward_total], [reverse_list, reverse_methyl, reverse_total]]
-
+			cons_c_dict[item]= [[forward_list, forward_methyl, forward_total], [reverse_list, reverse_methyl, reverse_total]]
+			forward_methyl, forward_total, reverse_methyl, reverse_total= [], [], [], []
 	return cons_c_dict
 
 def get_intersected_reads(repeat_consensus_c_dictionary, repeat_copy_cpg_ref_dictionary, repeat_copy_cpg_cons_dictionary): 
 	repeat_consensus_c, repeat_copy_cpg_ref, repeat_copy_cpg_cons = repeat_consensus_c_dictionary, repeat_copy_cpg_ref_dictionary, repeat_copy_cpg_cons_dictionary 
-	with open ("adrenal_gland_intersect_L1MC5a_3end-1_10.bed", "r") as adrenal_gland_intersect:
+	with open ("adrenal_gland_intersect_chrm22.bed", "r") as adrenal_gland_intersect:
 		read_number=1
 		for line in adrenal_gland_intersect: 
 			print ("Read Added: %s seconds" %(time.time()-start_time))
 			print "Read Number: ", read_number
 			line_list=line.split() 
 			subfamily, rmsk_strand, sam_strand=line_list[9], line_list[11], line_list[5]
-			methyl_positions, total_positions= analyze_overlap(repeat_copy_cpg_ref, line_list, subfamily, sam_strand)
-
-
+			methyl_positions, total_positions= analyze_overlap(repeat_copy_cpg_ref, line_list, subfamily, rmsk_strand, sam_strand)
 
 
 			subfamily_consensus=subfamily[:subfamily.index(".")]
-			if (sam_strand=="+" and rmsk_strand=="+" or sam_strand=="-" and rmsk_strand=="-"): 
+			if ((sam_strand=="+" and rmsk_strand=="+") or (sam_strand=="-" and rmsk_strand=="-")): 
 				n=0
 				consensus_positions_list, copy_positions_list=repeat_consensus_c[subfamily_consensus][n][0], repeat_copy_cpg_cons[subfamily][0]
-			elif (sam_strand=="+" and rmsk_strand=="-" or sam_strand=="-" and sam_strand=="+"):
+			elif ((sam_strand=="+" and rmsk_strand=="-") or (sam_strand=="-" and rmsk_strand=="+")):
 				n=1
 				consensus_positions_list, copy_positions_list=repeat_consensus_c[subfamily_consensus][n][0], repeat_copy_cpg_cons[subfamily][1]
+
+			#print "Repeat Consensus C[subfamily_consensus]: ", repeat_consensus_c[subfamily_consensus]
+			#print "Consensus positions list: ", consensus_positions_list
+			#print "Copy positions list: ", copy_positions_list
+
 			consensus_index = find_start_position(consensus_positions_list, copy_positions_list[0], len(consensus_positions_list), 0)
 
 			repeat_consensus_c=update_consensus_seqs(repeat_consensus_c, consensus_positions_list, copy_positions_list, methyl_positions, total_positions, subfamily_consensus, rmsk_strand, sam_strand, consensus_index, n)
 
+			#print "Consensus Positions List: ", consensus_positions_list
+			#print 
+			#print "Copy Positions List: ", copy_positions_list
+			#print 
+			#print 
 			read_number+=1
+
+	#for item in repeat_consensus_c: 
+	#	print item 
+	#	print repeat_consensus_c[item]
+	#	print
+
 	return repeat_consensus_c
 
 
@@ -170,8 +201,8 @@ def get_cpg(line_list_list, cpg_dict_dictionary, name_string, forward_list_list,
 	return cpg_dict, name, forward_list, reverse_list
 
 
-def analyze_overlap(repeat_copy_cpg_ref_dictionary, line_list_list, subfamily_string, sam_strand_string): 
-	repeat_copy_cpg_ref, line_list, subfamily, sam_strand= repeat_copy_cpg_ref_dictionary, line_list_list, subfamily_string, sam_strand_string
+def analyze_overlap(repeat_copy_cpg_ref_dictionary, line_list_list, subfamily_string, rmsk_strand_string, sam_strand_string): 
+	repeat_copy_cpg_ref, line_list, subfamily, rmsk_strand, sam_strand = repeat_copy_cpg_ref_dictionary, line_list_list, subfamily_string, rmsk_strand_string, sam_strand_string
 
 	rmsk_chrm_start, rmsk_chrm_stop = int(line_list[7]), int(line_list[8])
 	sam_chrm_start, sam_chrm_stop, sam_read = int(line_list[1]), int(line_list[2]), line_list[3]
@@ -183,22 +214,21 @@ def analyze_overlap(repeat_copy_cpg_ref_dictionary, line_list_list, subfamily_st
 	methyl_positions=[]
 	total_positions=[]
 
-	if (sam_strand=="+"): 
-		position_list=forward_strand
+	if (sam_strand=="+"):
+		ref_position_list=forward_strand
 		bp_total, bp_methyl= "C", "T"
-	elif (sam_strand=="-"):
-		position_list=reverse_strand
-		bp_total, bp_methyl= "G", "A"
+	if (sam_strand=="-"):
+		ref_position_list=reverse_strand
+		bp_total, bp_methyl="G", "A"
 
-
-	sam_rel_start= sam_chrm_start-rmsk_chrm_start
-	sam_rel_stop= length_sam_read+sam_rel_start-1
-
-	rmsk_reference_position=position_list[0]
+	rmsk_reference_position=ref_position_list[0]
 	rmsk_reference_list=[]
 
-	for rmsk_rel_position in xrange(len(position_list)): 
-		rmsk_reference_list.append(position_list[rmsk_rel_position]-rmsk_reference_position)
+	sam_rel_start= sam_chrm_start-rmsk_reference_position
+	sam_rel_stop= length_sam_read+sam_rel_start-1
+
+	for rmsk_rel_position in xrange(len(ref_position_list)): 
+		rmsk_reference_list.append(ref_position_list[rmsk_rel_position]-rmsk_reference_position)
 
 	for rmsk_rel_position in xrange(len(rmsk_reference_list)): 
 		sam_bp_position= rmsk_reference_list[rmsk_rel_position]-sam_rel_start
@@ -208,6 +238,10 @@ def analyze_overlap(repeat_copy_cpg_ref_dictionary, line_list_list, subfamily_st
 			methyl_positions.append(0)
 
 		else: 
+			#print "Ref positions: ", ref_position_list
+			#print "Sam Base Pair Position: ", sam_bp_position
+			#print "Sam Base Pair: ", sam_read[sam_bp_position]
+			#print "Ref Base Pair: ", ref_position_list[rmsk_rel_position]
 			if (sam_read[sam_bp_position]==bp_total or sam_read[sam_bp_position]==bp_methyl):
 				total_positions.append(1)
 				if (sam_read[sam_bp_position]==bp_methyl): 
@@ -231,11 +265,21 @@ def update_consensus_seqs(repeat_consensus_c_dict, consensus_positions_list_list
 
 	while (copy_index<copy_length and consensus_index<consensus_length): 
 		while (consensus_index<consensus_length): 
+			#print "consensus_positions_list: ", consensus_positions_list
+			#print "Copy_positions_list, ", copy_positions_list
+			#print "Consensus_positions_list[consensus_index]: ",consensus_positions_list[consensus_index]
+			#print "Copy_positions_list: ", copy_positions_list[copy_index]
+			#print 
 			if (consensus_positions_list[consensus_index]==copy_positions_list[copy_index]): 
 				repeat_consensus_c[subfamily_consensus][n][1][consensus_index]=methyl_positions[copy_index]+repeat_consensus_c[subfamily_consensus][n][1][consensus_index]
 				repeat_consensus_c[subfamily_consensus][n][2][consensus_index]=total_positions[copy_index]+repeat_consensus_c[subfamily_consensus][n][2][consensus_index]
 				copy_index+=1
+				if (rmsk_strand=="+"):
+					consensus_index+=1
+				elif (rmsk_strand=="-"):
+					consensus_index-=1
 				break
+			
 			else: 
 				if (rmsk_strand=="+"):
 					consensus_index+=1
@@ -247,13 +291,24 @@ def find_start_position(consensus_positions_list_list, chrm_pos_int, length_list
 	consensus_positions_list, chrm_pos, length_list, position= consensus_positions_list_list, chrm_pos_int, length_list_int, position_int
 	if (length_list>0):
 		halfWay=length_list/2 
+		#print "halfWay", halfWay
+		#print "List, ", consensus_positions_list
+		#print "length_list: ", length_list
 		midListChrmPos=consensus_positions_list[halfWay]
 		leftList, rightList= consensus_positions_list[:halfWay], consensus_positions_list[halfWay+1:]
+		lengthLeft, lengthRight= len(leftList), len(rightList)
+
+		#print "Starting Position: ", chrm_pos
+		#print "Halfway: ", halfWay
+		#print "midListChrmPos: ", midListChrmPos
+		#print "Left List: ", leftList
+		#print "Right List: ", rightList
+		#print 
 
 		if (chrm_pos>midListChrmPos):
-			position=halfWay+find_start_position(rightList, chrm_pos, halfWay, position)+1
+			position=halfWay+find_start_position(rightList, chrm_pos, lengthRight, position)+1
 		elif (chrm_pos < midListChrmPos):
-			position=find_start_position(leftList, chrm_pos, halfWay, position)
+			position=find_start_position(leftList, chrm_pos, lengthLeft, position)
 		elif (chrm_pos==midListChrmPos):
 			return halfWay 
 
