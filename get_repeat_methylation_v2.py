@@ -263,8 +263,8 @@ def update_consensus_seqs(repeat_consensus_c_dict, consensus_positions_list_list
 
 	line_count=1
 
-	while (copy_index<copy_length and consensus_index<consensus_length): 
-		while (consensus_index<consensus_length): 
+	while (copy_index<copy_length and consensus_index<consensus_length and copy_index>0 and consensus_index>0): 
+		while (consensus_index<consensus_length and copy_index<copy_length and copy_index>0 and consensus_index>0): 
 			#print "consensus_positions_list: ", consensus_positions_list
 			#print "Copy_positions_list, ", copy_positions_list
 			#print "Consensus_positions_list[consensus_index]: ",consensus_positions_list[consensus_index]
